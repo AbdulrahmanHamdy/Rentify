@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>rentify-api-secrets</UserSecretsId>
+
+    <!-- Phase 7: emit XML doc comments so Swagger can show the /// summaries already on the
+         controllers. CS1591 ("missing XML comment") is suppressed — not every public member
+         needs a doc comment, and the warning would flood the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned to 6.x on purpose: Swashbuckle 8+ moved to Microsoft.OpenApi 2.x, which changes
+         the OpenApiSecurityScheme/Reference types used in Swagger/SwaggerServiceExtensions.cs. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rentify.Application\Rentify.Application.csproj" />
+    <ProjectReference Include="..\Rentify.Infrastructure\Rentify.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

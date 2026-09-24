@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+.vs/
+*.user
+
+# Local-only configuration containing test credentials (SMTP password, Paymob keys, DB password, JWT key).
+# Use user-secrets or environment variables for anything real.
+**/appsettings.Development.json
+**/appsettings.Local.json
+secrets.json

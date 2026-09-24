@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Phase 7: lets Swagger show the DTO doc comments in this assembly (see Rentify.API). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- FrameworkReference (not a NuGet package) gives this class library access to
+         Microsoft.Extensions.DependencyInjection.Abstractions (IServiceCollection) for the
+         AddApplicationServices() extension method, without depending on ASP.NET Core
+         hosting itself. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Phase 5: AutoMapper (entity <-> DTO mapping profiles) and FluentValidation (request
+         DTO validators, invoked by Rentify.API's global ValidationFilter). Both version
+         independently of the ASP.NET Core runtime, so they use a floating major rather than
+         the "8.0.*" convention used for the EF Core / Identity packages in Infrastructure. -->
+    <PackageReference Include="AutoMapper" Version="13.*" />
+    <PackageReference Include="FluentValidation" Version="11.*" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rentify.Domain\Rentify.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

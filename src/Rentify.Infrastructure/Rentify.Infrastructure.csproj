@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- FrameworkReference (not a NuGet package) gives this class library access to
+         Microsoft.Extensions.DependencyInjection.Abstractions and
+         Microsoft.Extensions.Configuration.Abstractions for the AddInfrastructureServices()
+         extension method, plus Identity core types reserved for the Authentication phase.
+         Serilog, Hangfire and SignalR PackageReferences will be added when those phases are
+         implemented. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Persistence (Phase 3). Version="8.0.*" tracks the latest 8.0.x patch on restore
+         rather than pinning an exact patch number that may already be superseded by the
+         time this restores on your machine. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Authentication (Phase 4). Identity.EntityFrameworkCore and JwtBearer are versioned
+         in lockstep with the ASP.NET Core runtime, so "8.0.*" is safe the same way it is
+         for the EF Core packages above. System.IdentityModel.Tokens.Jwt (used directly by
+         JwtTokenGenerator for JwtSecurityTokenHandler) versions independently of ASP.NET
+         Core, so it uses a floating major ("8.*") instead. -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rentify.Application\Rentify.Application.csproj" />
+    <ProjectReference Include="..\Rentify.Domain\Rentify.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
