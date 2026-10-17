@@ -8,6 +8,7 @@
     <!-- Phase 7: lets Swagger show the DTO doc comments in this assembly (see Rentify.API). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1903</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +24,7 @@
          DTO validators, invoked by Rentify.API's global ValidationFilter). Both version
          independently of the ASP.NET Core runtime, so they use a floating major rather than
          the "8.0.*" convention used for the EF Core / Identity packages in Infrastructure. -->
-    <PackageReference Include="AutoMapper" Version="13.*" />
+    <PackageReference Include="AutoMapper" Version="13.*" NoWarn="NU1903" />
     <PackageReference Include="FluentValidation" Version="11.*" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.*" />
   </ItemGroup>

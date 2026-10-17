@@ -33,6 +33,17 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<ValidationFilter>();
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SpaCorsPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "https://localhost:5173", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // Phase 7: OpenAPI document + Swagger UI with a JWT "Authorize" button.
 builder.Services.AddRentifySwagger();
 
@@ -50,7 +61,12 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
     app.UseRentifySwagger();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("SpaCorsPolicy");
 
 // Authentication must run before Authorization so User is populated before [Authorize]
 // checks it.

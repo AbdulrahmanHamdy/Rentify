@@ -50,6 +50,10 @@ public class RentifyDbContext : IdentityDbContext<ApplicationUser, IdentityRole,
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(RentifyDbContext).Assembly);
 
         ApplySoftDeleteQueryFilters(modelBuilder);
+
+        // EF Core warning 10622: ensure PropertyAmenity respects Amenity soft-delete filter
+        modelBuilder.Entity<PropertyAmenity>()
+            .HasQueryFilter(pa => pa.Amenity == null || !pa.Amenity.IsDeleted);
     }
 
     /// <summary>

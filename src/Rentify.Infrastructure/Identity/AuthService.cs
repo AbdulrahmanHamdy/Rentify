@@ -62,6 +62,7 @@ public class AuthService : IAuthService
             FirstName = request.FirstName,
             LastName = request.LastName,
             PhoneNumber = request.PhoneNumber,
+            EmailConfirmed = true,
         };
 
         var createResult = await _userManager.CreateAsync(user, request.Password);
@@ -83,20 +84,13 @@ public class AuthService : IAuthService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        await _emailSender.SendEmailAsync(
-            user.Email!,
-            "Confirm your Rentify account",
-            $"Welcome to Rentify. UserId: {user.Id}, confirmation token: {confirmationToken}",
-            cancellationToken);
-
         _logger.LogInformation("New {Role} account registered: {UserId}", normalizedRole, user.Id);
 
         return new RegisterResponse(
             user.Id,
             user.Email!,
             normalizedRole,
-            "Registration successful. Check your email to confirm your account before logging in.");
+            "Registration successful. You can now log in.");
     }
 
     public async Task ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken cancellationToken = default)
@@ -125,7 +119,7 @@ public class AuthService : IAuthService
 
         if (signInResult.IsNotAllowed)
         {
-            throw new AppUnauthorizedException("Email not confirmed. Please check your inbox for the confirmation link.");
+            throw new AppUnauthorizedException("Sign in is not allowed for this account. Please contact support.");
         }
 
         if (!signInResult.Succeeded)
