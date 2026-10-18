@@ -3,6 +3,7 @@ using Rentify.API.Middleware;
 using Rentify.API.Swagger;
 using Rentify.Application;
 using Rentify.Infrastructure;
+using Rentify.Infrastructure.Data;
 using Rentify.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -80,6 +81,11 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     await IdentitySeeder.SeedRolesAsync(scope.ServiceProvider);
+
+    if (app.Environment.IsDevelopment())
+    {
+        await DbSeeder.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.Run();
