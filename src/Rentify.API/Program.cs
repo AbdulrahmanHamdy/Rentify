@@ -38,7 +38,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("SpaCorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:5173", "http://localhost:3000")
+        policy.WithOrigins("http://localhost:5173", "https://localhost:5173", "http://localhost:3000", "https://rentify-tau-beige.vercel.app")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -75,6 +75,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Root health-check so a browser visit to / confirms the API is alive.
+app.MapGet("/", () => Results.Ok(new { status = "ok", api = "Rentify API", version = "1.0" }))
+   .ExcludeFromDescription(); // hide from Swagger
 
 // Seed the fixed Admin/Owner/Tenant roles on startup. Deliberately does not seed a
 // default Admin user — see IdentitySeeder's doc comment for why.
