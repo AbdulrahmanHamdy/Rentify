@@ -93,6 +93,7 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IProfileService, ProfileService>();
 
         // Email: use real SMTP when EmailSettings is fully configured, otherwise fall back to
         // the logging sender so a missing setting never stops the app from starting.

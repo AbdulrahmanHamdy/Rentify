@@ -90,3 +90,34 @@ export interface PagedResult<T> {
   hasPreviousPage: boolean;
   hasNextPage: boolean;
 }
+
+// User Profile Types
+export interface UserProfileDto {
+  userId: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  roles: string[];
+  createdAt: string;
+  ownerProfileId?: number | null;
+  companyName?: string | null;
+  propertiesCount: number;
+  unitsCount: number;
+  tenantProfileId?: number | null;
+  nationalId?: string | null;
+  activeContractsCount: number;
+}
+
+export interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  companyName?: string;
+  nationalId?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
