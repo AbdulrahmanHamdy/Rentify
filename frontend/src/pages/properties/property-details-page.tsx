@@ -9,10 +9,9 @@ import {
   Trash2,
   Layers,
   ArrowLeft,
-  Bed,
-  Bath,
-  Maximize2,
   Key,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { propertiesService } from '@/services/properties.service';
 import { unitsService } from '@/services/units.service';
@@ -25,19 +24,35 @@ import { Dialog } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorAlert } from '@/components/shared/error-alert';
 import { EmptyState } from '@/components/shared/empty-state';
+import { ImageLightbox } from '@/components/shared/image-lightbox';
+import { useToast } from '@/components/ui/toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { queryClient } from '@/lib/query-client';
 import type { UnitDto } from '@/types';
+
+// Curated high resolution architectural photos for properties
+const PROPERTY_GALLERY = [
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
+];
 
 export const PropertyDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const propertyId = parseInt(id || '', 10);
   const navigate = useNavigate();
   const { hasRole, primaryRole } = useAuth();
+  const toast = useToast();
 
   const [deletePropertyDialogOpen, setDeletePropertyDialogOpen] = useState(false);
   const [unitToDelete, setUnitToDelete] = useState<UnitDto | null>(null);
   const [actionError, setActionError] = useState<unknown>(null);
+
+  // Lightbox state
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
   const canManage = hasRole('Owner') || hasRole('Admin');
 
@@ -68,11 +83,13 @@ export const PropertyDetailsPage: React.FC = () => {
     mutationFn: () => propertiesService.deleteProperty(propertyId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['properties'] });
+      toast.success('Property deleted successfully.');
       navigate('/properties');
     },
     onError: (err) => {
       setActionError(err);
       setDeletePropertyDialogOpen(false);
+      toast.error('Failed to delete property. Check if active contracts exist.');
     },
   });
 
@@ -83,19 +100,40 @@ export const PropertyDetailsPage: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['property-units', propertyId] });
       await queryClient.invalidateQueries({ queryKey: ['property', propertyId] });
       setUnitToDelete(null);
+      toast.success('Unit removed successfully.');
     },
     onError: (err) => {
       setActionError(err);
       setUnitToDelete(null);
+      toast.error('Failed to delete unit. It may be reserved or leased.');
     },
   });
+
+  const handleDeletePropertyConfirm = () => {
+    deletePropertyMutation.mutate();
+  };
+
+  const handleDeleteUnitConfirm = () => {
+    if (unitToDelete?.id) {
+      deleteUnitMutation.mutate(unitToDelete.id);
+    }
+  };
+
+  const openLightbox = (index: number) => {
+    setActivePhotoIdx(index);
+    setIsLightboxOpen(true);
+  };
 
   if (isLoadingProperty) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 w-full rounded-2xl" />
-        <Skeleton className="h-96 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
+        </div>
       </div>
     );
   }
@@ -115,6 +153,7 @@ export const PropertyDetailsPage: React.FC = () => {
   }
 
   const units = unitsData?.items || [];
+  const availableUnits = units.filter((u) => u.status === 'Available');
 
   return (
     <div className="space-y-8">
@@ -150,6 +189,56 @@ export const PropertyDetailsPage: React.FC = () => {
 
       <ErrorAlert error={actionError} onDismiss={() => setActionError(null)} />
 
+      {/* Property Imagery Gallery Banner */}
+      <div className="relative rounded-2xl overflow-hidden shadow-sm border border-charcoal-200 bg-charcoal-900">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5 h-72 sm:h-80">
+          {/* Main Large Photo */}
+          <div
+            onClick={() => openLightbox(0)}
+            className="md:col-span-2 relative h-full cursor-pointer group overflow-hidden"
+          >
+            <img
+              src={PROPERTY_GALLERY[0]}
+              alt={property.name ?? 'Property'}
+              className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-charcoal-950/70 via-transparent to-transparent flex items-end p-4">
+              <span className="text-white text-xs font-semibold flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-full border border-white/20">
+                <Camera className="w-3.5 h-3.5" />
+                Click to view gallery
+              </span>
+            </div>
+          </div>
+
+          {/* Secondary Photos */}
+          <div
+            onClick={() => openLightbox(1)}
+            className="hidden md:block relative h-full cursor-pointer group overflow-hidden"
+          >
+            <img
+              src={PROPERTY_GALLERY[1]}
+              alt="Interior"
+              className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+
+          <div
+            onClick={() => openLightbox(2)}
+            className="hidden md:block relative h-full cursor-pointer group overflow-hidden"
+          >
+            <img
+              src={PROPERTY_GALLERY[2]}
+              alt="Balcony view"
+              className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute inset-0 bg-black/50 hover:bg-black/40 transition-colors flex flex-col items-center justify-center text-white p-2">
+              <ImageIcon className="w-6 h-6 mb-1 text-brand-300" />
+              <span className="text-xs font-bold">+{PROPERTY_GALLERY.length} Photos</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Property Overview Card */}
       <div className="rounded-2xl border border-charcoal-200 bg-white p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -159,6 +248,11 @@ export const PropertyDetailsPage: React.FC = () => {
                 <Layers className="w-3 h-3 mr-1" />
                 {property.unitCount} {property.unitCount === 1 ? 'Unit' : 'Units'}
               </Badge>
+              {availableUnits.length > 0 && (
+                <Badge variant="success">
+                  {availableUnits.length} Available Now
+                </Badge>
+              )}
               <span className="text-xs text-charcoal-400">Added on {formatDate(property.createdAt)}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-charcoal-900">
@@ -248,77 +342,74 @@ export const PropertyDetailsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent className="p-4 pt-0 flex-1 flex flex-col justify-between">
                   <div className="space-y-3">
-                    {/* Specs Pills */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-charcoal-600 bg-charcoal-50 p-2.5 rounded-lg border border-charcoal-100">
-                      <div className="flex items-center gap-1">
-                        <Maximize2 className="w-3.5 h-3.5 text-charcoal-400" />
-                        <span>{unit.areaSqm} m²</span>
+                    {/* Unit Spec Highlights */}
+                    <div className="grid grid-cols-3 gap-1 py-2 border-y border-charcoal-100 text-center text-xs text-charcoal-600">
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="font-semibold text-charcoal-900">{unit.areaSqm} m²</span>
+                        <span className="text-[10px] text-charcoal-400">Area</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Bed className="w-3.5 h-3.5 text-charcoal-400" />
-                        <span>{unit.bedrooms} {unit.bedrooms === 1 ? 'Bed' : 'Beds'}</span>
+                      <div className="flex flex-col items-center justify-center border-x border-charcoal-100">
+                        <span className="font-semibold text-charcoal-900">{unit.bedrooms}</span>
+                        <span className="text-[10px] text-charcoal-400">Beds</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Bath className="w-3.5 h-3.5 text-charcoal-400" />
-                        <span>{unit.bathrooms} {unit.bathrooms === 1 ? 'Bath' : 'Baths'}</span>
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="font-semibold text-charcoal-900">{unit.bathrooms}</span>
+                        <span className="text-[10px] text-charcoal-400">Baths</span>
                       </div>
                     </div>
 
-                    {/* Financials */}
-                    <div className="flex items-center justify-between text-xs pt-1">
+                    {/* Price and Deposit */}
+                    <div className="flex items-baseline justify-between pt-1">
                       <div>
-                        <span className="text-charcoal-500 block">Monthly Rent</span>
-                        <span className="text-base font-bold text-brand-700">
+                        <span className="text-xs text-charcoal-500 block">Rent</span>
+                        <span className="text-base font-bold text-brand-600">
                           {formatCurrency(unit.monthlyRent)}
+                          <span className="text-[10px] font-normal text-charcoal-400">/mo</span>
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-charcoal-500 block">Deposit</span>
-                        <span className="font-semibold text-charcoal-800">
+                        <span className="text-[10px] text-charcoal-400 block">Deposit</span>
+                        <span className="text-xs font-semibold text-charcoal-700">
                           {formatCurrency(unit.depositAmount)}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions Footer */}
+                  {/* Actions */}
                   <div className="mt-4 pt-3 border-t border-charcoal-100 flex items-center justify-between gap-2">
-                    <Link
-                      to={`/units/${unit.id}`}
-                      className="text-xs font-semibold text-charcoal-600 hover:text-charcoal-900"
-                    >
-                      View Details
+                    <Link to={`/units/${unit.id}`} className="flex-1">
+                      <Button variant="secondary" size="sm" className="w-full text-xs">
+                        View Unit Details
+                      </Button>
                     </Link>
 
-                    <div className="flex items-center gap-1.5">
-                      {unit.status === 'Available' && primaryRole === 'Tenant' && (
-                        <Link to={`/contracts/create?unitId=${unit.id}`}>
-                          <Button variant="primary" size="sm" className="h-7 text-xs px-2.5">
-                            <Key className="w-3 h-3 mr-1" />
-                            Apply
+                    {unit.status === 'Available' && primaryRole === 'Tenant' && (
+                      <Link to={`/units/${unit.id}`}>
+                        <Button variant="primary" size="sm" className="text-xs whitespace-nowrap">
+                          <Key className="w-3.5 h-3.5 mr-1" />
+                          Apply
+                        </Button>
+                      </Link>
+                    )}
+
+                    {canManage && (
+                      <div className="flex items-center gap-1">
+                        <Link to={`/units/${unit.id}/edit`}>
+                          <Button variant="ghost" size="sm" className="p-1.5 h-auto text-charcoal-500 hover:text-charcoal-900">
+                            <Edit2 className="w-3.5 h-3.5" />
                           </Button>
                         </Link>
-                      )}
-
-                      {canManage && (
-                        <>
-                          <Link to={`/units/${unit.id}/edit`}>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Edit unit">
-                              <Edit2 className="w-3.5 h-3.5 text-charcoal-500" />
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 hover:text-red-600"
-                            title="Delete unit"
-                            onClick={() => setUnitToDelete(unit)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setUnitToDelete(unit)}
+                          className="p-1.5 h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -327,63 +418,63 @@ export const PropertyDetailsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Delete Property Confirmation Modal */}
+      {/* Lightbox Component */}
+      <ImageLightbox
+        images={PROPERTY_GALLERY}
+        currentIndex={activePhotoIdx}
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        onNavigate={(idx) => setActivePhotoIdx(idx)}
+        title={property.name || 'Property Gallery'}
+      />
+
+      {/* Delete Property Confirmation Dialog */}
       <Dialog
         isOpen={deletePropertyDialogOpen}
         onClose={() => setDeletePropertyDialogOpen(false)}
         title="Delete Property"
-        description={`Are you sure you want to delete "${property.name}"?`}
+        description="Are you sure you want to delete this property? This action is permanent and only allowed if there are no pending or active leases."
       >
-        <div className="space-y-4">
-          <p className="text-sm text-charcoal-600">
-            This will soft-delete the property. If any units have pending or active contracts, the deletion will be rejected by the server to protect active leases.
-          </p>
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-charcoal-100">
-            <Button
-              variant="outline"
-              onClick={() => setDeletePropertyDialogOpen(false)}
-              disabled={deletePropertyMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deletePropertyMutation.mutate()}
-              isLoading={deletePropertyMutation.isPending}
-            >
-              Confirm Deletion
-            </Button>
-          </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setDeletePropertyDialogOpen(false)}
+            disabled={deletePropertyMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDeletePropertyConfirm}
+            isLoading={deletePropertyMutation.isPending}
+          >
+            Yes, Delete Property
+          </Button>
         </div>
       </Dialog>
 
-      {/* Delete Unit Confirmation Modal */}
+      {/* Delete Unit Confirmation Dialog */}
       <Dialog
         isOpen={!!unitToDelete}
         onClose={() => setUnitToDelete(null)}
-        title="Delete Rental Unit"
-        description={`Are you sure you want to delete Unit ${unitToDelete?.unitNumber}?`}
+        title={`Delete Unit ${unitToDelete?.unitNumber}`}
+        description="Are you sure you want to remove this unit? It must not be currently leased."
       >
-        <div className="space-y-4">
-          <p className="text-sm text-charcoal-600">
-            This operation cannot be undone. Units associated with pending or active rental contracts cannot be deleted.
-          </p>
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-charcoal-100">
-            <Button
-              variant="outline"
-              onClick={() => setUnitToDelete(null)}
-              disabled={deleteUnitMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => unitToDelete && typeof unitToDelete.id === 'number' && deleteUnitMutation.mutate(unitToDelete.id)}
-              isLoading={deleteUnitMutation.isPending}
-            >
-              Confirm Deletion
-            </Button>
-          </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setUnitToDelete(null)}
+            disabled={deleteUnitMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteUnitConfirm}
+            isLoading={deleteUnitMutation.isPending}
+          >
+            Yes, Delete Unit
+          </Button>
         </div>
       </Dialog>
     </div>

@@ -1,7 +1,111 @@
-# Rentify
+# Rentify - Modern Property Rental & Management Platform
 
-A production-style ASP.NET Core Web API for property rental management (property owners,
-tenants, and administrators). Being built incrementally, phase by phase.
+A production-ready full-stack rental property management platform built with an **ASP.NET Core 8 Web API** backend and a **React 18 + TypeScript + Vite + Tailwind CSS** frontend.
+
+---
+
+## 🌐 Live Deployments
+
+* **Frontend Web App:** [https://rentify-tau-beige.vercel.app](https://rentify-tau-beige.vercel.app)
+* **Backend API & Swagger UI:** [http://rentify.runasp.net/swagger](http://rentify.runasp.net/swagger)
+* **API Base URL:** `http://rentify.runasp.net`
+
+---
+
+## 🔑 Demo Login Accounts
+
+The database has been freshly seeded with realistic properties, units, rental contracts, and maintenance tickets across Egypt (Cairo, Giza, Alexandria, New Cairo, 6th of October). All demo accounts share the uniform password below:
+
+> **Universal Demo Password:** `Rentify2026!`
+
+| Role | Email | Company / Profile | Seed Data Context |
+| :--- | :--- | :--- | :--- |
+| **Owner** | `owner@rentify.com` | Rentify Prime Real Estate | Owns 6 prime properties (Zamalek, Giza Villa, Palm Hills, San Stefano, Lake View) |
+| **Owner** | `hamdy.owner@rentify.com` | Nile Crest Developments | Owns 6 modern properties (Maadi Greenery, Mivida, Dokki, Gleem Bay) |
+| **Tenant** | `tenant@rentify.com` | Karim Mahmoud | Active lease on Unit 401 at *Nile Crest Zamalek Residence*; open maintenance ticket |
+| **Tenant** | `sarah.tenant@rentify.com` | Sarah Hamdy | Prospective tenant ready to explore units and submit lease applications |
+| **Admin** | `admin@rentify.com` | Rentify Administrator | Full platform visibility across all properties, contracts, and tickets |
+
+---
+
+## ✨ Key Features & User Flows
+
+### 1. Interactive Property Catalog & Smart Filters
+* **Location Quick-Filter Pills:** Filter listings in 1 click across `Cairo`, `Giza`, `Alexandria`, `New Cairo`, and `6th of October`.
+* **Keyword Search & Sorting:** Live debounced search by property title/address, with sorting by price, date added, or name.
+* **Filter Badges & Clear:** Instant indicator showing number of active filters with a one-click reset button.
+
+### 2. High-Resolution Image Gallery & Lightbox
+* **Hero Image Gallery:** Multi-image preview grid on property and unit detail pages.
+* **Keyboard-Accessible Lightbox:** Fullscreen image viewer with next/previous keyboard shortcuts (`ArrowLeft`, `ArrowRight`, `Esc`), smooth zoom, image counter, and clickable thumbnail filmstrip.
+
+### 3. Tenant "My Home" Dashboard & One-Click Lease Application Flow
+* **Unit Details & Lease Wizard:** On any available unit page, tenants can click **"Apply to Lease"** to open a guided modal:
+  * Select start and end dates.
+  * Live calculation of lease duration (in months) and total rent estimate.
+  * Instant contract creation under `Pending` status (`Unit` automatically transitions to `Reserved`).
+* **Tenant Hub:** Tenants can view active leases, lease expiration dates, payment schedules, and real-time maintenance requests directly from `/tenant/dashboard`.
+
+### 4. Full-Featured Maintenance Ticket System (`/maintenance`)
+* **Tenant Ticket Filing:** Tenants can submit work orders with custom urgency levels (`Low`, `Medium`, `High`, `Emergency`), descriptions, and optional photo attachments.
+* **Owner & Admin Triage:** Owners and admins can view incoming tickets across their portfolio and update status with 1-click actions:
+  * `Open` ➔ `In Progress` ➔ `Resolved` (or `Cancelled`).
+* **Real-time Status Sync:** When a ticket status changes, it immediately updates on both the maintenance dashboard and the tenant's overview.
+
+### 5. Toast Feedback & Notification System
+* Built-in unobtrusive toast notification stack (`useToast`) providing instant visual confirmation for logins, ticket filings, lease applications, profile updates, and copy-to-clipboard actions.
+
+---
+
+## 🚀 End-to-End Walkthrough Guide
+
+### Scenario A: Tenant Browsing & Applying for a Home
+1. Open [https://rentify-tau-beige.vercel.app](https://rentify-tau-beige.vercel.app).
+2. Click **"Properties"** in the top navigation.
+3. Click the **"New Cairo"** or **"Alexandria"** pill to filter properties by city.
+4. Select **"Lake View Residence 5th Settlement"** or **"San Stefano Seafront Suite"**.
+5. Click on an available unit (e.g., Unit 101 or Unit 802).
+6. Click **"Apply to Lease"** (if not logged in, sign in with `sarah.tenant@rentify.com` / `Rentify2026!`).
+7. Pick lease dates and submit. The unit status immediately transitions to `Reserved` and the owner receives a pending contract!
+
+### Scenario B: Owner Approving Contracts & Triaging Maintenance
+1. Log in as `owner@rentify.com` / `Rentify2026!`.
+2. Visit **"Contracts"** to review pending lease applications. Click **"Activate"** to execute the lease and switch the unit to `Rented`.
+3. Navigate to **"Maintenance"** (`/maintenance`):
+   * Review open requests submitted by tenants (e.g., AC maintenance or plumbing).
+   * Click **"Update Status"** to transition tickets from `Open` to `In Progress` or `Resolved`.
+
+### Scenario C: Testing the Backend API via Swagger
+1. Open [http://rentify.runasp.net/swagger](http://rentify.runasp.net/swagger).
+2. Go to `POST /api/auth/login`, click **Try it out**, enter:
+   ```json
+   {
+     "email": "owner@rentify.com",
+     "password": "Rentify2026!"
+   }
+   ```
+3. Copy the `accessToken` from the response body.
+4. Click the green **Authorize** button at the top of Swagger, enter the token, and click **Authorize**.
+5. You can now execute protected endpoints such as:
+   * `GET /api/properties?mine=true`
+   * `GET /api/maintenance`
+   * `POST /api/maintenance/{id}/status`
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Lucide React, Axios, Headless UI / Radix primitives |
+| **Backend API** | ASP.NET Core 8 Web API, C# 12, Clean Architecture |
+| **Persistence** | Entity Framework Core 8, Microsoft SQL Server (MonsterASP.NET) |
+| **Authentication** | ASP.NET Core Identity, JWT Bearer Tokens, Refresh Token Rotation |
+| **Validation & Mapping** | FluentValidation, AutoMapper |
+| **Documentation** | Swagger / OpenAPI (Swashbuckle 6.9) with JWT Security Scheme |
+| **Deployment** | MonsterASP.NET (Backend via MSDeploy), Vercel (Frontend CI/CD via GitHub `main`) |
+
+---
 
 ## Solution layout
 

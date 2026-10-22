@@ -23,7 +23,30 @@ namespace Rentify.Infrastructure.Data;
 /// </summary>
 public static class DbSeeder
 {
-    public const string DefaultDevPassword = "DevPassword123!";
+    public const string DefaultDevPassword = "Rentify2026!";
+
+    public static async Task ResetAndSeedAsync(IServiceProvider serviceProvider)
+    {
+        var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DbSeeder));
+        var dbContext = serviceProvider.GetRequiredService<RentifyDbContext>();
+
+        logger.LogInformation("Cleaning database tables for fresh seed...");
+
+        dbContext.MaintenanceUpdates.RemoveRange(dbContext.MaintenanceUpdates);
+        dbContext.MaintenanceRequests.RemoveRange(dbContext.MaintenanceRequests);
+        dbContext.Payments.RemoveRange(dbContext.Payments);
+        dbContext.RentalContracts.RemoveRange(dbContext.RentalContracts);
+        dbContext.PropertyAmenities.RemoveRange(dbContext.PropertyAmenities);
+        dbContext.PropertyImages.RemoveRange(dbContext.PropertyImages);
+        dbContext.Units.RemoveRange(dbContext.Units);
+        dbContext.Properties.RemoveRange(dbContext.Properties);
+        dbContext.OwnerProfiles.RemoveRange(dbContext.OwnerProfiles);
+        dbContext.TenantProfiles.RemoveRange(dbContext.TenantProfiles);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Database tables cleaned. Running fresh seed...");
+        await SeedAsync(serviceProvider);
+    }
 
     public static async Task SeedAsync(IServiceProvider serviceProvider)
     {
@@ -32,6 +55,9 @@ public static class DbSeeder
         var dbContext = serviceProvider.GetRequiredService<RentifyDbContext>();
 
         logger.LogInformation("Starting development database seeding check...");
+
+        // 0. Ensure Admin user exists
+        await SeedAdminUserAsync(userManager, logger);
 
         // 1. Seed or resolve users and their domain profiles
         var (owners, tenants) = await SeedUsersAndProfilesAsync(userManager, dbContext, logger);
@@ -55,6 +81,44 @@ public static class DbSeeder
         logger.LogInformation("Development database seeding check completed successfully.");
     }
 
+    private static async Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager, ILogger logger)
+    {
+        var adminEmail = "admin@rentify.com";
+        var user = await userManager.FindByEmailAsync(adminEmail);
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                FirstName = "Rentify",
+                LastName = "Administrator",
+                PhoneNumber = "+201000000000",
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await userManager.CreateAsync(user, DefaultDevPassword);
+            if (!createResult.Succeeded)
+            {
+                logger.LogWarning("Failed to create admin user: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                return;
+            }
+        }
+        else
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            await userManager.ResetPasswordAsync(user, token, DefaultDevPassword);
+        }
+
+        if (!await userManager.IsInRoleAsync(user, Roles.Admin))
+        {
+            await userManager.AddToRoleAsync(user, Roles.Admin);
+        }
+
+        logger.LogInformation("Admin account ensured: {Email}", adminEmail);
+    }
+
     private record UserProfilePair<TProfile>(ApplicationUser User, TProfile Profile);
 
     private static async Task<(List<UserProfilePair<OwnerProfile>> Owners, List<UserProfilePair<TenantProfile>> Tenants)>
@@ -67,19 +131,19 @@ public static class DbSeeder
         {
             new
             {
-                Email = "ownerhamdy4587@gmail.com",
+                Email = "owner@rentify.com",
                 FirstName = "Hamdy",
-                LastName = "Owner",
+                LastName = "El-Sayed",
                 PhoneNumber = "+201001234567",
-                CompanyName = "Hamdy Real Estate Investment"
+                CompanyName = "Rentify Prime Real Estate"
             },
             new
             {
-                Email = "noha.owner@rentify.dev",
+                Email = "hamdy.owner@rentify.com",
                 FirstName = "Noha",
-                LastName = "El-Sayed",
+                LastName = "Hassan",
                 PhoneNumber = "+201098765432",
-                CompanyName = "Nile Crest Properties"
+                CompanyName = "Nile Crest Developments"
             }
         };
 
@@ -87,27 +151,19 @@ public static class DbSeeder
         {
             new
             {
-                Email = "abdohamdy4587@gmail.com",
-                FirstName = "Abdo",
-                LastName = "Hamdy",
+                Email = "tenant@rentify.com",
+                FirstName = "Karim",
+                LastName = "Mahmoud",
                 PhoneNumber = "+201112345678",
                 NationalId = "29801011234567"
             },
             new
             {
-                Email = "sayedhamdy4587@gmail.com",
-                FirstName = "Sayed",
+                Email = "sarah.tenant@rentify.com",
+                FirstName = "Sarah",
                 LastName = "Hamdy",
                 PhoneNumber = "+201123456789",
                 NationalId = "29905151234567"
-            },
-            new
-            {
-                Email = "waleed195mokhtar@gmail.com",
-                FirstName = "Waleed",
-                LastName = "Mokhtar",
-                PhoneNumber = "+201134567890",
-                NationalId = "29712011234568"
             }
         };
 
@@ -136,6 +192,13 @@ public static class DbSeeder
                 }
 
                 logger.LogInformation("Created seed owner account: {Email}", config.Email);
+            }
+            else
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                await userManager.ResetPasswordAsync(user, token, DefaultDevPassword);
+                user.EmailConfirmed = true;
+                await userManager.UpdateAsync(user);
             }
 
             if (!await userManager.IsInRoleAsync(user, Roles.Owner))
@@ -185,6 +248,13 @@ public static class DbSeeder
                 }
 
                 logger.LogInformation("Created seed tenant account: {Email}", config.Email);
+            }
+            else
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                await userManager.ResetPasswordAsync(user, token, DefaultDevPassword);
+                user.EmailConfirmed = true;
+                await userManager.UpdateAsync(user);
             }
 
             if (!await userManager.IsInRoleAsync(user, Roles.Tenant))

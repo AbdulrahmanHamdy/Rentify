@@ -26,6 +26,9 @@ import {
 import { useAuth } from '@/features/auth/use-auth';
 import { propertiesService } from '@/services/properties.service';
 import { contractsService } from '@/services/contracts.service';
+import { maintenanceService } from '@/services/maintenance.service';
+import { useToast } from '@/components/ui/toast';
+import { queryClient } from '@/lib/query-client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,16 +46,6 @@ const PROPERTY_IMAGES = [
   'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80',
   'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=800&q=80',
 ];
-
-interface MaintenanceItem {
-  id: string;
-  title: string;
-  category: string;
-  unit: string;
-  date: string;
-  status: 'Open' | 'In progress' | 'Resolved';
-  urgency: 'Low' | 'Medium' | 'High' | 'Emergency';
-}
 
 export const TenantDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -100,68 +93,58 @@ export const TenantDashboard: React.FC = () => {
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isNewMaintenanceModalOpen, setIsNewMaintenanceModalOpen] = useState(false);
+  const toast = useToast();
 
   // New Maintenance Request Form State
   const [newTicketTitle, setNewTicketTitle] = useState('');
   const [newTicketCategory, setNewTicketCategory] = useState('Plumbing');
   const [newTicketUrgency, setNewTicketUrgency] = useState<'Low' | 'Medium' | 'High' | 'Emergency'>('Medium');
   const [newTicketDescription, setNewTicketDescription] = useState('');
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
 
-  // Maintenance list state (stored in local storage so tenant sees their submitted requests)
-  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('rentify_tenant_maintenance');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return [
-      {
-        id: 'REQ-101',
-        title: 'Master bathroom sink water pressure low',
-        category: 'Plumbing',
-        unit: 'Unit 204',
-        date: '3 days ago',
-        status: 'In progress',
-        urgency: 'Medium',
-      },
-      {
-        id: 'REQ-100',
-        title: 'Central air filter seasonal replacement',
-        category: 'HVAC',
-        unit: 'Unit 204',
-        date: 'Oct 12, 2026',
-        status: 'Resolved',
-        urgency: 'Low',
-      },
-    ];
+  // Maintenance list state from real API
+  const { data: realMaintenanceData } = useQuery({
+    queryKey: ['maintenance'],
+    queryFn: () => maintenanceService.getRequests({ pageSize: 5 }),
+    enabled: !!user,
   });
 
-  const handleCreateMaintenance = (e: React.FormEvent) => {
+  const maintenanceRequests = realMaintenanceData?.items || [];
+
+  const handleCreateMaintenance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTicketTitle.trim()) return;
-
-    const newReq: MaintenanceItem = {
-      id: `REQ-${Math.floor(100 + Math.random() * 900)}`,
-      title: newTicketTitle.trim(),
-      category: newTicketCategory,
-      unit: activeContract?.unitNumber ? `Unit ${activeContract.unitNumber}` : 'Current Unit',
-      date: 'Just now',
-      status: 'Open',
-      urgency: newTicketUrgency,
-    };
-
-    const updated = [newReq, ...maintenanceRequests];
-    setMaintenanceRequests(updated);
-    try {
-      localStorage.setItem('rentify_tenant_maintenance', JSON.stringify(updated));
-    } catch {
-      // ignore
+    if (!activeContract?.unitId) {
+      toast.error('You need an active lease contract to file maintenance requests.');
+      return;
     }
 
-    setNewTicketTitle('');
-    setNewTicketDescription('');
-    setIsNewMaintenanceModalOpen(false);
+    const priorityMap: Record<string, number> = {
+      Low: 1,
+      Medium: 2,
+      High: 3,
+      Emergency: 4,
+    };
+
+    setIsSubmittingTicket(true);
+    try {
+      await maintenanceService.createRequest({
+        unitId: activeContract.unitId,
+        title: `[${newTicketCategory}] ${newTicketTitle.trim()}`,
+        description: newTicketDescription.trim() || newTicketTitle.trim(),
+        priority: priorityMap[newTicketUrgency] || 2,
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['maintenance'] });
+      setNewTicketTitle('');
+      setNewTicketDescription('');
+      setIsNewMaintenanceModalOpen(false);
+      toast.success('Maintenance ticket submitted to your property manager.');
+    } catch {
+      toast.error('Failed to submit maintenance ticket. Please try again.');
+    } finally {
+      setIsSubmittingTicket(false);
+    }
   };
 
   // 1. Fetch user's contracts
@@ -923,58 +906,61 @@ export const TenantDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="divide-y divide-amber-100/80">
-                  {maintenanceRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-amber-50/30 px-2 rounded-2xl transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 shrink-0 mt-0.5">
-                          <Wrench className="w-5 h-5" />
+                  {maintenanceRequests.map((req) => {
+                    const statusConfig = {
+                      1: { label: 'Open', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+                      2: { label: 'In Progress', color: 'bg-teal-100 text-teal-800 border-teal-200' },
+                      3: { label: 'Resolved', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+                      4: { label: 'Cancelled', color: 'bg-charcoal-100 text-charcoal-600 border-charcoal-200' },
+                    }[req.status] || { label: 'Open', color: 'bg-amber-100 text-amber-800' };
+
+                    const prioConfig = {
+                      1: 'Low',
+                      2: 'Medium',
+                      3: 'High',
+                      4: 'Emergency',
+                    }[req.priority] || 'Normal';
+
+                    return (
+                      <div
+                        key={req.id}
+                        className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-amber-50/30 px-2 rounded-2xl transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 shrink-0 mt-0.5">
+                            <Wrench className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-charcoal-900">
+                                {req.title}
+                              </span>
+                              <span className="text-[10px] font-mono text-charcoal-400">
+                                #{req.id}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-charcoal-500">
+                              <span>Unit {req.unitNumber}</span>
+                              <span>•</span>
+                              <span>{req.propertyName}</span>
+                              <span>•</span>
+                              <span>{formatDate(req.createdAt)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-charcoal-900">
-                              {req.title}
-                            </span>
-                            <span className="text-[10px] font-mono text-charcoal-400">
-                              {req.id}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-charcoal-500">
-                            <span>{req.category}</span>
-                            <span>•</span>
-                            <span>{req.unit}</span>
-                            <span>•</span>
-                            <span>{req.date}</span>
-                          </div>
+
+                        <div className="flex items-center gap-2 sm:self-center self-start">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig.color}`}>
+                            {statusConfig.label}
+                          </span>
+
+                          <span className="text-[11px] font-semibold text-charcoal-500 px-2 py-0.5 rounded-lg bg-charcoal-100">
+                            {prioConfig}
+                          </span>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 sm:self-center self-start">
-                        {/* Status Chip */}
-                        {req.status === 'Open' && (
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                            Open
-                          </span>
-                        )}
-                        {req.status === 'In progress' && (
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">
-                            In progress
-                          </span>
-                        )}
-                        {req.status === 'Resolved' && (
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            Resolved
-                          </span>
-                        )}
-
-                        <span className="text-[11px] font-semibold text-charcoal-500 px-2 py-0.5 rounded-lg bg-charcoal-100">
-                          {req.urgency}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1155,6 +1141,7 @@ export const TenantDashboard: React.FC = () => {
               type="submit"
               variant="primary"
               size="sm"
+              isLoading={isSubmittingTicket}
               className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-xs"
             >
               Submit Ticket

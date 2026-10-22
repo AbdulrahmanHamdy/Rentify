@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"npm run dev:api\" \"wait-on tcp:127.0.0.1:5261 && npm run dev:web\"",
+    "dev": "concurrently -k -c \"blue,green\" -n \"api,web\" \"npm run dev:api\" \"wait-on -t 60000 --tcpTimeout 1000 tcp:127.0.0.1:5261 && npm run dev:web\"",
     "dev:api": "dotnet watch run --project ../src/Rentify.API/Rentify.API.csproj --launch-profile http",
     "dev:web": "vite",
     "build": "tsc && vite build",

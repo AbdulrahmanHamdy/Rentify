@@ -121,3 +121,44 @@ export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
 }
+
+// Maintenance Types
+export type MaintenancePriority = 1 | 2 | 3 | 4;
+export type MaintenanceStatus = 1 | 2 | 3 | 4;
+
+export interface MaintenanceUpdateDto {
+  id: number;
+  oldStatus?: number | null;
+  newStatus: number;
+  updatedByUserId: string;
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface MaintenanceRequestDto {
+  id: number;
+  unitId: number;
+  unitNumber: string;
+  propertyId: number;
+  propertyName: string;
+  tenantProfileId: number;
+  tenantName: string;
+  title: string;
+  description: string;
+  priority: number;
+  status: number;
+  createdAt: string;
+  updates: MaintenanceUpdateDto[];
+}
+
+export interface CreateMaintenanceRequest {
+  unitId: number;
+  title: string;
+  description: string;
+  priority: number;
+}
+
+export interface UpdateMaintenanceStatusRequest {
+  status: number;
+  note?: string;
+}
