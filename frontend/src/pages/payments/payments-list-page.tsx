@@ -11,6 +11,8 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
+
+
 export const PaymentsListPage: React.FC = () => {
   const { user } = useAuth();
 
